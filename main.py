@@ -25,7 +25,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 def parse_ids(raw):
     ids = []
     for part in str(raw or "").replace(";", ",").replace(" ", ",").split(","):
-        part = part.strip()
+        part = part.strip().strip("\"'")
         if part.lstrip("-").isdigit():
             ids.append(int(part))
     return ids
@@ -929,7 +929,12 @@ def process_show_qris(call):
 
 def admin_only(message):
     """True jika pengirim admin dan chat pribadi. Selain itu diabaikan diam-diam."""
-    return is_private(message) and message.from_user.id in ADMIN_IDS
+    if not is_private(message):
+        return False
+    if message.from_user.id in ADMIN_IDS:
+        return True
+    print(f"[INFO] Perintah admin ditolak dari ID {message.from_user.id}; ADMIN_IDS={ADMIN_IDS}")
+    return False
 
 
 def args_of(message):
@@ -943,6 +948,16 @@ def parse_user_id(text):
 
 def reply_html(message, text):
     bot.reply_to(message, text, parse_mode="HTML", disable_web_page_preview=True)
+
+
+@bot.message_handler(commands=["id"], func=is_private)
+def cmd_id(message):
+    status = "ADMIN ✅" if message.from_user.id in ADMIN_IDS else "bukan admin ❌"
+    bot.reply_to(
+        message,
+        f"ID Telegram Anda: <code>{message.from_user.id}</code>\nStatus: {status}",
+        parse_mode="HTML",
+    )
 
 
 @bot.message_handler(commands=["admin", "help_admin"], func=admin_only)
@@ -1371,6 +1386,6 @@ def cb_broadcast(call):
 # ============================================================
 
 if __name__ == "__main__":
-    print("Bot berjalan...")
+    print(f"Bot berjalan... ADMIN_IDS={ADMIN_IDS}")
     resume_pending_orders()
     bot.infinity_polling(skip_pending=True)
